@@ -12,7 +12,7 @@ nitrobtx_cflags = [
     '-Werror',
 ]
 
-libpng_dep = dependency('libpng', native:true)
+libpng_dep = dependency('libpng', native: true)
 
 nitrobtx_incdir = include_directories('include')
 
@@ -32,7 +32,7 @@ nitrobtx_exe = executable(
         'src/texture.c',
     ),
     c_args: nitrobtx_cflags,
-    include_directories : nitrobtx_incdir,
+    include_directories: nitrobtx_incdir,
     dependencies: libpng_dep,
     install: false,
     native: true,
