@@ -36,7 +36,7 @@ enum PalReadError {
 
 static png_color NDSColorToPNG(struct NDSColor color);
 static struct NDSColor PNGToNDSColor(png_color color);
-static const unsigned int NumDigits(unsigned int val);
+static unsigned int NumDigits(unsigned int val);
 static enum ErrorCode Palette_ReadPNG(const char *inputPath, struct Palette *out);
 static enum ErrorCode Palette_ReadJASCPAL(const char *path, struct Palette *palette);
 
@@ -371,7 +371,7 @@ enum ErrorCode Palette_ReadPNG(const char *inputPath, struct Palette *out)
     return ERR_CODE_OK;
 }
 
-static const unsigned int NumDigits(unsigned int val)
+static unsigned int NumDigits(unsigned int val)
 {
     int n = 0;
     for (int i = 10, n = 1; i < INT_MAX / 10; i *= 10, n++) {

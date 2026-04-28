@@ -234,6 +234,7 @@ static void ParsePackOptions(char *progName, char **argv, struct Options *option
                 exit(1);
             }
             VecLast(options->textures).transparencyInput = opts.optarg;
+            break;
         case OPTION_SPRITESHEET:
             if (curr != CURRENT_INPUT_TEXTURE) {
                 fprintf(stderr, "Option '%s' can only be passed after a texture input!\n", argv[opts.optind]);
