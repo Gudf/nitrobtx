@@ -67,7 +67,10 @@ int TexturesVec_ToSpritesheetPNG(const struct TexturesVec *textures, const struc
     png_structp png_ptr;
     png_infop info_ptr;
 
-    InitializeWritePNG(filepath, &fp, &png_ptr, &info_ptr);
+    enum ErrorCode res;
+    if ((res = InitializeWritePNG(filepath, &fp, &png_ptr, &info_ptr)) != ERR_CODE_OK) {
+        return res;
+    }
 
     if (setjmp(png_jmpbuf(png_ptr))) {
         png_destroy_write_struct(&png_ptr, &info_ptr);
@@ -99,7 +102,6 @@ int TexturesVec_ToSpritesheetPNG(const struct TexturesVec *textures, const struc
     png_write_info(png_ptr, info_ptr);
     free(paletteDataPtr);
 
-    enum ErrorCode res = ERR_CODE_OK;
     VecForEach (tex, *textures) {
         if (AppendToPNG(tex, palette, png_ptr, info_ptr) != ERR_CODE_OK) {
             res = ERR_CODE_INPUT_INVALID;

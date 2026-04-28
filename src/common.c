@@ -143,6 +143,5 @@ enum ErrorCode InitializeWritePNG(const char *inputPath, FILE **fp, png_structp 
     }
 
     png_init_io(*png_ptr, *fp);
-    png_set_sig_bytes(*png_ptr, 8);
     return ERR_CODE_OK;
 }
