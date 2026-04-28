@@ -1,7 +1,9 @@
 project(
     'nitrobtx',
     'c',
-    meson_version: '>=1.1'
+    meson_version: '>=1.1',
+    license: 'GPLv3',
+    license_files: 'LICENSE'
 )
 
 nitrobtx_cflags = [
@@ -12,7 +14,9 @@ nitrobtx_cflags = [
     '-Werror',
 ]
 
-libpng_dep = dependency('libpng', native: true)
+native = get_option('native')
+
+libpng_dep = dependency('libpng', native: native)
 
 nitrobtx_incdir = include_directories('include')
 
@@ -34,6 +38,6 @@ nitrobtx_exe = executable(
     c_args: nitrobtx_cflags,
     include_directories: nitrobtx_incdir,
     dependencies: libpng_dep,
-    install: false,
-    native: true,
+    native: native,
+    install: native and (meson.is_cross_build() ? false : true),
 )
