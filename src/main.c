@@ -137,12 +137,12 @@ static int PackBTX(struct Options *options)
         }
         switch (pal->inputType) {
         case INPUT_TYPE_PNG:
-            if ((tmp = PalettesVec_AppendFromPNG(&chunk->palettes, pal->path, pal->name, pal->repeat ? pal->repeatCount : 1)) != ERR_CODE_OK) {
+            if ((tmp = PalettesVec_AppendFromPNG(&chunk->palettes, pal->path, pal->name, pal->repeat ? pal->repeatCount : 1, pal->addSuffix)) != ERR_CODE_OK) {
                 res = tmp;
             }
             break;
         case INPUT_TYPE_JASC_PAL:
-            if ((tmp = PalettesVec_AppendFromJASCPAL(&chunk->palettes, pal->path, pal->name, pal->repeat ? pal->repeatCount : 1)) != ERR_CODE_OK) {
+            if ((tmp = PalettesVec_AppendFromJASCPAL(&chunk->palettes, pal->path, pal->name, pal->repeat ? pal->repeatCount : 1, pal->addSuffix)) != ERR_CODE_OK) {
                 res = tmp;
             }
             break;

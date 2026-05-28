@@ -24,6 +24,7 @@ struct PaletteInput {
     enum PaletteInputType inputType;
     bool repeat;
     int repeatCount;
+    bool addSuffix;
     const char *name;
     const char *path;
 };

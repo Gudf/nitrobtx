@@ -34,6 +34,11 @@ enum PalReadError {
     PAL_READ_ERROR_INVALID_CHANNEL_VALUE,
 };
 
+enum PaletteSource {
+    PALETTE_SOURCE_PNG,
+    PALETTE_SOURCE_JASC_PAL,
+};
+
 static png_color NDSColorToPNG(struct NDSColor color);
 static struct NDSColor PNGToNDSColor(png_color color);
 static unsigned int NumDigits(unsigned int val);
@@ -155,18 +160,26 @@ static int ReadLine(FILE *fp, char lineBuf[16])
     }
 }
 
-enum ErrorCode PalettesVec_AppendFromJASCPAL(struct PalettesVec *vec, const char *path, const char *name, unsigned int copies)
+static enum ErrorCode PalettesVec_Append(struct PalettesVec *vec, enum PaletteSource source, const char *path, const char *name, unsigned int copies, bool addSuffix)
 {
     int nameLength = RES_NAME_LENGTH;
 
     if (copies > 1) {
-        if (strlen(name) + 1 + NumDigits(copies) > RES_NAME_LENGTH) {
-            nameLength = RES_NAME_LENGTH - 1 - NumDigits(copies);
+        int extraCharactersCount = 1 + NumDigits(copies) + (addSuffix ? strlen("_pl") : 0);
+        if (strlen(name) + extraCharactersCount > RES_NAME_LENGTH) {
+            nameLength -= extraCharactersCount;
             fprintf(stderr, "Warning: palette basename %s is too long to fit the palette number suffix! It will be truncated to %u characters: '%.*s'.\n", name, nameLength, nameLength, name);
         }
     } else {
-        if (strlen(name) > RES_NAME_LENGTH) {
-            fprintf(stderr, "Warning: palette basename %s is too long! It will be truncated to %u characters: '%.*s'.\n", name, nameLength, nameLength, name);
+        if (addSuffix) {
+            if (strlen(name) + strlen("_pl") > RES_NAME_LENGTH) {
+                nameLength -= strlen("_pl");
+                fprintf(stderr, "Warning: palette name %s is too long to fit the '_pl' suffix! It will be truncated to %u characters: '%.*s'.\n", name, nameLength, nameLength, name);
+            }
+        } else {
+            if (strlen(name) > RES_NAME_LENGTH) {
+                fprintf(stderr, "Warning: palette name %s is too long! It will be truncated to %u characters: '%.*s'.\n", name, nameLength, nameLength, name);
+            }
         }
     }
 
@@ -175,16 +188,25 @@ enum ErrorCode PalettesVec_AppendFromJASCPAL(struct PalettesVec *vec, const char
     struct Palette *pal = &VecLast(*vec);
 
     enum ErrorCode res;
-    if ((res = Palette_ReadJASCPAL(path, pal)) != ERR_CODE_OK) {
-        return res;
+    switch (source) {
+    case PALETTE_SOURCE_PNG:
+        if ((res = Palette_ReadPNG(path, pal)) != ERR_CODE_OK) {
+            return res;
+        }
+        break;
+    case PALETTE_SOURCE_JASC_PAL:
+        if ((res = Palette_ReadJASCPAL(path, pal)) != ERR_CODE_OK) {
+            return res;
+        }
+        break;
     }
 
     char nameBuf[RES_NAME_LENGTH + 1] = { 0 };
 
     if (copies > 1) {
-        snprintf(nameBuf, RES_NAME_LENGTH + 1, "%.*s.%u", nameLength, name, 1);
+        snprintf(nameBuf, RES_NAME_LENGTH + 1, "%.*s.%u%s", nameLength, name, 1, addSuffix ? "_pl" : "");
     } else {
-        snprintf(nameBuf, RES_NAME_LENGTH + 1, "%.*s", nameLength, name);
+        snprintf(nameBuf, RES_NAME_LENGTH + 1, "%.*s%s", nameLength, name, addSuffix ? "_pl" : "");
     }
 
     CopyToResName(&pal->name, nameBuf);
@@ -193,7 +215,7 @@ enum ErrorCode PalettesVec_AppendFromJASCPAL(struct PalettesVec *vec, const char
         VecAppend(*vec, (struct Palette) { 0 });
         struct Palette *copy = &VecLast(*vec);
 
-        snprintf(nameBuf, RES_NAME_LENGTH + 1, "%.*s.%u", nameLength, name, i + 1);
+        snprintf(nameBuf, RES_NAME_LENGTH + 1, "%.*s.%u%s", nameLength, name, i + 1, addSuffix ? "_pl" : "");
         CopyToResName(&copy->name, nameBuf);
         copy->numColors = pal->numColors;
         copy->unknown = pal->unknown;
@@ -205,54 +227,14 @@ enum ErrorCode PalettesVec_AppendFromJASCPAL(struct PalettesVec *vec, const char
     return ERR_CODE_OK;
 }
 
-enum ErrorCode PalettesVec_AppendFromPNG(struct PalettesVec *vec, const char *path, const char *name, unsigned int copies)
+enum ErrorCode PalettesVec_AppendFromJASCPAL(struct PalettesVec *vec, const char *path, const char *name, unsigned int copies, bool addSuffix)
 {
-    int nameLength = RES_NAME_LENGTH;
+    return PalettesVec_Append(vec, PALETTE_SOURCE_JASC_PAL, path, name, copies, addSuffix);
+}
 
-    if (copies > 1) {
-        if (strlen(name) + 1 + NumDigits(copies) > RES_NAME_LENGTH) {
-            nameLength = RES_NAME_LENGTH - 1 - NumDigits(copies);
-            fprintf(stderr, "Warning: palette basename %s is too long to fit the palette number suffix! It will be truncated to %u characters: '%.*s'.\n", name, nameLength, nameLength, name);
-        }
-    } else {
-        if (strlen(name) > RES_NAME_LENGTH) {
-            fprintf(stderr, "Warning: palette basename %s is too long! It will be truncated to %u characters: '%.*s'.\n", name, nameLength, nameLength, name);
-        }
-    }
-
-    VecAppend(*vec, (struct Palette) { 0 });
-
-    struct Palette *pal = &VecLast(*vec);
-
-    enum ErrorCode res;
-    if ((res = Palette_ReadPNG(path, pal)) != ERR_CODE_OK) {
-        return res;
-    }
-
-    char nameBuf[RES_NAME_LENGTH + 1] = { 0 };
-
-    if (copies > 1) {
-        snprintf(nameBuf, RES_NAME_LENGTH + 1, "%.*s.%u", nameLength, name, 1);
-    } else {
-        snprintf(nameBuf, RES_NAME_LENGTH + 1, "%.*s", nameLength, name);
-    }
-
-    CopyToResName(&pal->name, nameBuf);
-
-    for (int i = 1; i < copies; i++) {
-        VecAppend(*vec, (struct Palette) { 0 });
-        struct Palette *copy = &VecLast(*vec);
-
-        snprintf(nameBuf, RES_NAME_LENGTH + 1, "%.*s.%u", nameLength, name, i + 1);
-        CopyToResName(&copy->name, nameBuf);
-        copy->numColors = pal->numColors;
-        copy->unknown = pal->unknown;
-
-        copy->data = calloc(copy->numColors, sizeof(*copy->data));
-        memcpy(copy->data, pal->data, copy->numColors * sizeof(struct NDSColor));
-    }
-
-    return ERR_CODE_OK;
+enum ErrorCode PalettesVec_AppendFromPNG(struct PalettesVec *vec, const char *path, const char *name, unsigned int copies, bool addSuffix)
+{
+    return PalettesVec_Append(vec, PALETTE_SOURCE_PNG, path, name, copies, addSuffix);
 }
 
 enum ErrorCode Palette_ReadJASCPAL(const char *path, struct Palette *palette)

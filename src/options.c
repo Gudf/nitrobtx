@@ -44,16 +44,17 @@ enum OptionCharacters {
     OPTION_PALETTE = 'p',
     OPTION_FORMAT = 'f',
     OPTION_NAME = 'n',
+    OPTION_NAMES_FILE = 'N',
     OPTION_TRANSPARENT = 'T',
     OPTION_NO_TRANSPARENT = 'O',
     OPTION_TRANSPARENCY_MAP = 'm',
     OPTION_EXTRACT_PALETTE = 'e',
-    OPTION_REPEAT_PALETTE = 'r',
     OPTION_SPRITESHEET = 's',
     OPTION_NUM_FRAMES = 'F',
     OPTION_FRAME_HEIGHT = 'H',
+    OPTION_REPEAT_PALETTE = 'r',
+    OPTION_PALETTE_SUFFIX = 'S',
     OPTION_PALETTES_DIR = 'd',
-    OPTION_NAMES_FILE = 'N',
     OPTION_INVALID = '?',
 };
 
@@ -78,10 +79,11 @@ static const struct optparse_long longopts_subcommands[] = {
     { "no-transparent", OPTION_NO_TRANSPARENT, OPTPARSE_NONE },
     { "transparency-map", OPTION_TRANSPARENCY_MAP, OPTPARSE_REQUIRED },
     { "extract-palette", OPTION_EXTRACT_PALETTE, OPTPARSE_NONE },
-    { "repeat-palette", OPTION_REPEAT_PALETTE, OPTPARSE_NONE },
     { "spritesheet", OPTION_SPRITESHEET, OPTPARSE_NONE },
     { "num-frames", OPTION_NUM_FRAMES, OPTPARSE_REQUIRED },
     { "frame-height", OPTION_FRAME_HEIGHT, OPTPARSE_REQUIRED },
+    { "repeat-palette", OPTION_REPEAT_PALETTE, OPTPARSE_NONE },
+    { "palette-suffix", OPTION_PALETTE_SUFFIX, OPTPARSE_NONE },
     { "palettes-dir", OPTION_PALETTES_DIR, OPTPARSE_REQUIRED },
     { "help", OPTION_HELP, OPTPARSE_NONE },
     { "version", OPTION_VERSION, OPTPARSE_NONE },
@@ -291,6 +293,13 @@ static void ParsePackOptions(char *progName, char **argv, struct Options *option
                 exit(1);
             }
             VecLast(options->palettes).repeat = true;
+            break;
+        case OPTION_PALETTE_SUFFIX:
+            if (curr != CURRENT_INPUT_PALETTE) {
+                fprintf(stderr, "Option '%s' can only be passed after a palette input!\n", argv[opts.optind]);
+                exit(1);
+            }
+            VecLast(options->palettes).addSuffix = true;
             break;
         case OPTION_HELP:
             PrintUsage(stdout, progName);
