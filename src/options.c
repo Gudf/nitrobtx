@@ -249,6 +249,10 @@ static void ParsePackOptions(char *progName, char **argv, struct Options *option
                 fprintf(stderr, "Option '%s' can only be passed after a texture input!\n", argv[opts.optind]);
                 exit(1);
             }
+            if (!VecLast(options->textures).spritesheet) {
+                fprintf(stderr, "For texture at %s: '%s' is only valid for spritesheet textures!\n", VecLast(options->textures).path, argv[opts.optind]);
+                exit(1);
+            }
             if (VecLast(options->textures).frameHeight != -1) {
                 fprintf(stderr, "For texture at %s: can't pass both a texture height and a number of frames!\n", VecLast(options->textures).path);
                 exit(1);
@@ -258,6 +262,10 @@ static void ParsePackOptions(char *progName, char **argv, struct Options *option
         case OPTION_FRAME_HEIGHT:
             if (curr != CURRENT_INPUT_TEXTURE) {
                 fprintf(stderr, "Option '%s' can only be passed after a texture input!\n", argv[opts.optind]);
+                exit(1);
+            }
+            if (!VecLast(options->textures).spritesheet) {
+                fprintf(stderr, "For texture at %s: '%s' is only valid for spritesheet textures!\n", VecLast(options->textures).path, argv[opts.optind]);
                 exit(1);
             }
             if (VecLast(options->textures).numFrames != -1) {
