@@ -196,20 +196,20 @@ static void ParsePackOptions(char *progName, char **argv, struct Options *option
                 VecLast(options->palettes).name = opts.optarg;
                 break;
             default:
-                fprintf(stderr, "Option '%s' can only be passed after a texture or palette input!\n", argv[opts.optind]);
+                fprintf(stderr, "Option '%s' can only be passed after a texture or palette input!\n", argv[opts.optind - 2]);
                 exit(1);
             }
             break;
         case OPTION_NAMES_FILE:
             if (curr != CURRENT_INPUT_TEXTURE || VecLast(options->textures).spritesheet == false) {
-                fprintf(stderr, "Option '%s' can only be used with a spritesheet texture input!\n", argv[opts.optind]);
+                fprintf(stderr, "For texture at %s: '%s' is only valid for spritesheet textures!\n", VecLast(options->textures).path, argv[opts.optind - 2]);
                 exit(1);
             }
             VecLast(options->textures).namesFile = opts.optarg;
             break;
         case OPTION_FORMAT:
             if (curr != CURRENT_INPUT_TEXTURE) {
-                fprintf(stderr, "Option '%s' can only be passed after a texture input!\n", argv[opts.optind]);
+                fprintf(stderr, "Option '%s' can only be passed after a texture input!\n", argv[opts.optind - 2]);
                 exit(1);
             }
             enum TextureFormat fmt = ParseFormat(opts.optarg);
@@ -221,32 +221,32 @@ static void ParsePackOptions(char *progName, char **argv, struct Options *option
             break;
         case OPTION_TRANSPARENT:
             if (curr != CURRENT_INPUT_TEXTURE) {
-                fprintf(stderr, "Option '%s' can only be passed after a texture input!\n", argv[opts.optind]);
+                fprintf(stderr, "Option '%s' can only be passed after a texture input!\n", argv[opts.optind - 1]);
                 exit(1);
             }
             VecLast(options->textures).transparent = 1;
             break;
         case OPTION_NO_TRANSPARENT:
             if (curr != CURRENT_INPUT_TEXTURE) {
-                fprintf(stderr, "Option '%s' can only be passed after a texture input!\n", argv[opts.optind]);
+                fprintf(stderr, "Option '%s' can only be passed after a texture input!\n", argv[opts.optind - 1]);
                 exit(1);
             }
             VecLast(options->textures).transparent = 0;
             break;
         case OPTION_TRANSPARENCY_MAP:
             if (curr != CURRENT_INPUT_TEXTURE) {
-                fprintf(stderr, "Option '%s' can only be passed after a texture input!\n", argv[opts.optind]);
+                fprintf(stderr, "Option '%s' can only be passed after a texture input!\n", argv[opts.optind - 2]);
                 exit(1);
             }
             if (VecLast(options->textures).format != TEX_FORMAT_A3I5_TRANS || VecLast(options->textures).format != TEX_FORMAT_A5I3_TRANS) {
-                fprintf(stderr, "For texture at %s: option '%s' can only be used with one of the paletted formats with transparency (A3I5/A5I3)!\n", VecLast(options->textures).path, argv[opts.optind]);
+                fprintf(stderr, "For texture at %s: option '%s' can only be used with one of the paletted formats with transparency (A3I5/A5I3)!\n", VecLast(options->textures).path, argv[opts.optind - 2]);
                 exit(1);
             }
             VecLast(options->textures).transparencyInput = opts.optarg;
             break;
         case OPTION_SPRITESHEET:
             if (curr != CURRENT_INPUT_TEXTURE) {
-                fprintf(stderr, "Option '%s' can only be passed after a texture input!\n", argv[opts.optind]);
+                fprintf(stderr, "Option '%s' can only be passed after a texture input!\n", argv[opts.optind - 2]);
                 exit(1);
             }
             VecLast(options->textures).spritesheet = true;
@@ -255,11 +255,11 @@ static void ParsePackOptions(char *progName, char **argv, struct Options *option
             break;
         case OPTION_NUM_FRAMES:
             if (curr != CURRENT_INPUT_TEXTURE) {
-                fprintf(stderr, "Option '%s' can only be passed after a texture input!\n", argv[opts.optind]);
+                fprintf(stderr, "Option '%s' can only be passed after a texture input!\n", argv[opts.optind - 2]);
                 exit(1);
             }
             if (!VecLast(options->textures).spritesheet) {
-                fprintf(stderr, "For texture at %s: '%s' is only valid for spritesheet textures!\n", VecLast(options->textures).path, argv[opts.optind]);
+                fprintf(stderr, "For texture at %s: '%s' is only valid for spritesheet textures!\n", VecLast(options->textures).path, argv[opts.optind - 2]);
                 exit(1);
             }
             if (VecLast(options->textures).frameHeight != -1) {
@@ -270,11 +270,11 @@ static void ParsePackOptions(char *progName, char **argv, struct Options *option
             break;
         case OPTION_FRAME_HEIGHT:
             if (curr != CURRENT_INPUT_TEXTURE) {
-                fprintf(stderr, "Option '%s' can only be passed after a texture input!\n", argv[opts.optind]);
+                fprintf(stderr, "Option '%s' can only be passed after a texture input!\n", argv[opts.optind - 2]);
                 exit(1);
             }
             if (!VecLast(options->textures).spritesheet) {
-                fprintf(stderr, "For texture at %s: '%s' is only valid for spritesheet textures!\n", VecLast(options->textures).path, argv[opts.optind]);
+                fprintf(stderr, "For texture at %s: '%s' is only valid for spritesheet textures!\n", VecLast(options->textures).path, argv[opts.optind - 2]);
                 exit(1);
             }
             if (VecLast(options->textures).numFrames != -1) {
@@ -285,7 +285,7 @@ static void ParsePackOptions(char *progName, char **argv, struct Options *option
             break;
         case OPTION_EXTRACT_PALETTE:
             if (curr != CURRENT_INPUT_TEXTURE) {
-                fprintf(stderr, "Option '%s' can only be passed after a texture input!\n", argv[opts.optind]);
+                fprintf(stderr, "Option '%s' can only be passed after a texture input!\n", argv[opts.optind - 1]);
                 exit(1);
             }
             curr = CURRENT_INPUT_PALETTE;
@@ -296,14 +296,14 @@ static void ParsePackOptions(char *progName, char **argv, struct Options *option
             break;
         case OPTION_REPEAT_PALETTE:
             if (curr != CURRENT_INPUT_PALETTE) {
-                fprintf(stderr, "Option '%s' can only be passed after a palette input!\n", argv[opts.optind]);
+                fprintf(stderr, "Option '%s' can only be passed after a palette input!\n", argv[opts.optind - 1]);
                 exit(1);
             }
             VecLast(options->palettes).repeat = true;
             break;
         case OPTION_PALETTE_SUFFIX:
             if (curr != CURRENT_INPUT_PALETTE) {
-                fprintf(stderr, "Option '%s' can only be passed after a palette input!\n", argv[opts.optind]);
+                fprintf(stderr, "Option '%s' can only be passed after a palette input!\n", argv[opts.optind - 1]);
                 exit(1);
             }
             VecLast(options->palettes).addSuffix = true;
@@ -315,10 +315,10 @@ static void ParsePackOptions(char *progName, char **argv, struct Options *option
             PrintVersion(stdout);
             exit(0);
         case OPTION_PALETTES_DIR:
-            fprintf(stderr, "Option '%s' not allowed in 'dump' mode!\n", argv[opts.optind]);
+            fprintf(stderr, "Option '%s' not allowed in 'dump' mode!\n", argv[opts.optind - 1]);
             exit(1);
         case OPTION_INVALID:
-            fprintf(stderr, "Invalid option '%s': %s!\n", argv[opts.optind], opts.errmsg);
+            fprintf(stderr, "Invalid option '%s': %s!\n", argv[opts.optind - 1], opts.errmsg);
             PrintUsage(stderr, progName);
             exit(1);
         }
@@ -355,11 +355,11 @@ static void ParseDumpOptions(char *progName, char **argv, struct Options *option
             PrintVersion(stdout);
             exit(0);
         case OPTION_INVALID:
-            fprintf(stderr, "Invalid option '%s': %s!\n", argv[opts.optind], opts.errmsg);
+            fprintf(stderr, "Invalid option '%s': %s!\n", argv[opts.optind - 1], opts.errmsg);
             PrintUsage(stderr, progName);
             exit(1);
         default:
-            fprintf(stderr, "Option '%s' not allowed in 'pack' mode!\n", argv[opts.optind]);
+            fprintf(stderr, "Option '%s' not allowed in 'pack' mode!\n", argv[opts.optind - 1]);
             exit(1);
         }
     }
