@@ -149,6 +149,8 @@ int WriteTexChunk(FILE *file, struct NSChunkTex *chunk)
 
         ((struct TextureDictData *)texDict.data)[toWrite].textureOffset = texOffsets[toWrite] / 8;
     }
+    free(texChecksums);
+    free(texOffsets);
 
     header.textureDataSize = texDataSize / 8;
 
@@ -176,6 +178,7 @@ int WriteTexChunk(FILE *file, struct NSChunkTex *chunk)
         }
         ((struct PaletteDictData *)palDict.data)[toWrite].plttOffset = palOffsets[toWrite] / 8;
     }
+    free(palOffsets);
 
     header.paletteDataSize = palDataSize / 8;
 
@@ -189,6 +192,9 @@ int WriteTexChunk(FILE *file, struct NSChunkTex *chunk)
     WriteNSResourceDict(file, &palDict);
 
     fseek(file, end, SEEK_SET);
+
+    FreeResourceDict(&texDict);
+    FreeResourceDict(&palDict);
     return 0;
 }
 
@@ -314,6 +320,7 @@ static int ReadPalettes(FILE *file, struct NSChunkTexHeader *header, struct NSCh
 
     FreeResourceDict(palettesDict);
     free(palettesDict);
+    free(paletteOffs);
 
     return 0;
 }
@@ -383,6 +390,7 @@ int TexChunkToDirectory(const struct NSChunkTex *chunk, const char *directory)
         }
 
         Texture_WritePNG(tex, minDistIdx == -1 ? NULL : &VecGet(chunk->palettes, minDistIdx), path);
+        free(path);
     }
 
     TexChunkPalettesToDirectory(chunk, directory);
@@ -407,8 +415,16 @@ void FreeTexChunk(struct NSChunkTex *chunk)
     if (chunk == NULL) {
         return;
     }
-    VecFree(chunk->palettes);
+
+    VecForEach (texture, chunk->textures) {
+        Texture_Free(texture);
+    }
     VecFree(chunk->textures);
+
+    VecForEach (palette, chunk->palettes) {
+        Palette_Free(palette);
+    }
+    VecFree(chunk->palettes);
     return;
 }
 

@@ -151,6 +151,13 @@ void ParseOptions(int argc, char **argv, struct Options *options)
     }
 }
 
+void FreeOptions(struct Options *options)
+{
+    VecFree(options->textures);
+    VecFree(options->palettes);
+    VecFree(options->nsbtxs);
+}
+
 static void ParsePackOptions(char *progName, char **argv, struct Options *options)
 {
     struct optparse opts = { 0 };
@@ -195,7 +202,7 @@ static void ParsePackOptions(char *progName, char **argv, struct Options *option
             break;
         case OPTION_NAMES_FILE:
             if (curr != CURRENT_INPUT_TEXTURE || VecLast(options->textures).spritesheet == false) {
-                fprintf(stderr, "Option '%s' can only be used with a spritesheet texture input!", argv[opts.optind]);
+                fprintf(stderr, "Option '%s' can only be used with a spritesheet texture input!\n", argv[opts.optind]);
                 exit(1);
             }
             VecLast(options->textures).namesFile = opts.optarg;

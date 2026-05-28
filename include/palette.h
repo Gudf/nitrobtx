@@ -22,5 +22,6 @@ void *Palette_WritePLTE(const struct Palette *palette, int maxSize, png_structp 
 enum ErrorCode Palette_WriteJASCPAL(const struct Palette *palette, const char *path);
 enum ErrorCode PalettesVec_AppendFromJASCPAL(struct PalettesVec *vec, const char *path, const char *name, unsigned int copies, bool addSuffix);
 enum ErrorCode PalettesVec_AppendFromPNG(struct PalettesVec *vec, const char *path, const char *name, unsigned int copies, bool addSuffix);
+void Palette_Free(struct Palette *palette);
 
 #endif // NITROBTX_PALETTE_H

@@ -41,12 +41,18 @@ int main(int argc, char **argv)
 
     ParseOptions(argc, argv, &options);
 
+    int res = 0;
     switch (options.mode) {
     case MODE_DUMP:
-        return DumpBTX(&options);
+        res = DumpBTX(&options);
+        break;
     case MODE_PACK:
-        return PackBTX(&options);
+        res = PackBTX(&options);
+        break;
     }
+
+    FreeOptions(&options);
+    return res;
 }
 
 static int DumpBTX(struct Options *options)

@@ -110,19 +110,19 @@ enum ErrorCode InitializeReadPNG(const char *inputPath, FILE **fp, png_structp *
     return ERR_CODE_OK;
 }
 
-enum ErrorCode InitializeWritePNG(const char *inputPath, FILE **fp, png_structp *png_ptr, png_infop *info_ptr)
+enum ErrorCode InitializeWritePNG(const char *outputPath, FILE **fp, png_structp *png_ptr, png_infop *info_ptr)
 {
-    *fp = fopen(inputPath, "wb");
+    *fp = fopen(outputPath, "wb");
 
     if (!fp) {
-        fprintf(stderr, "Failed to open file '%s' for writing!\n", inputPath);
+        fprintf(stderr, "Failed to open file '%s' for writing!\n", outputPath);
         return ERR_CODE_FAILED_OPEN_OUTPUT;
     }
 
     *png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
 
     if (!png_ptr) {
-        fprintf(stderr, "Failed to create libPNG write struct for file '%s'!\n", inputPath);
+        fprintf(stderr, "Failed to create libPNG write struct for file '%s'!\n", outputPath);
         fclose(*fp);
         return ERR_CODE_LIBPNG_ERROR;
     }
@@ -132,7 +132,7 @@ enum ErrorCode InitializeWritePNG(const char *inputPath, FILE **fp, png_structp 
     if (!*info_ptr) {
         png_destroy_write_struct(png_ptr, NULL);
         fclose(*fp);
-        fprintf(stderr, "Failed to create libPNG info struct for file '%s'!\n", inputPath);
+        fprintf(stderr, "Failed to create libPNG info struct for file '%s'!\n", outputPath);
         return ERR_CODE_LIBPNG_ERROR;
     }
 

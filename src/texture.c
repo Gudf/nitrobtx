@@ -126,7 +126,10 @@ int Texture_WritePNG(const struct Texture *texture, const struct Palette *palett
     png_structp png_ptr;
     png_infop info_ptr;
 
-    InitializeWritePNG(filepath, &fp, &png_ptr, &info_ptr);
+    enum ErrorCode res;
+    if ((res = InitializeWritePNG(filepath, &fp, &png_ptr, &info_ptr)) != ERR_CODE_OK) {
+        return res;
+    }
 
     if (setjmp(png_jmpbuf(png_ptr))) {
         png_destroy_write_struct(&png_ptr, &info_ptr);
@@ -146,11 +149,11 @@ int Texture_WritePNG(const struct Texture *texture, const struct Palette *palett
     }
 
     void *paletteDataPtr = NULL;
-    png_byte trans = 0;
     if (pngColorType == PNG_COLOR_TYPE_PALETTE) {
         int maxPalSize = 1 << GetPNGBitdepthForTexFmt(texture->format);
         paletteDataPtr = Palette_WritePLTE(palette, maxPalSize, png_ptr, info_ptr);
         if (texture->transparent) {
+            png_byte trans = 0;
             png_set_tRNS(png_ptr, info_ptr, &trans, 1, NULL);
         }
     }
@@ -158,7 +161,7 @@ int Texture_WritePNG(const struct Texture *texture, const struct Palette *palett
     png_write_info(png_ptr, info_ptr);
     free(paletteDataPtr);
 
-    enum ErrorCode res = AppendToPNG(texture, palette, png_ptr, info_ptr);
+    res = AppendToPNG(texture, palette, png_ptr, info_ptr);
 
     png_write_end(png_ptr, info_ptr);
 
@@ -628,6 +631,20 @@ static int PNGRectToTexture(png_bytepp pngRows, int startRow, int bitDepth, int 
     }
 
     return ERR_CODE_OK;
+}
+
+void Texture_Free(struct Texture *texture)
+{
+    if (texture->format == TEX_FORMAT_4X4_COMPRESSED) {
+        free(texture->texelData.chunks);
+        free(texture->texelData.chunkAttrs);
+        texture->texelData.chunks = NULL;
+        texture->texelData.chunkAttrs = NULL;
+    } else {
+        free(texture->texelData.rawData);
+        texture->texelData.rawData = NULL;
+    }
+    texture->dataByteCount = 0;
 }
 
 static uint8_t GetRowFillValue(png_bytep pngRow, int width, int bitDepth)

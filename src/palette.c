@@ -350,6 +350,13 @@ enum ErrorCode Palette_ReadPNG(const char *inputPath, struct Palette *out)
     return ERR_CODE_OK;
 }
 
+void Palette_Free(struct Palette *palette)
+{
+    free(palette->data);
+    palette->data = NULL;
+    palette->numColors = 0;
+}
+
 static unsigned int NumDigits(unsigned int val)
 {
     int n = 0;

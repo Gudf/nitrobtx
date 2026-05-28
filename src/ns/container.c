@@ -102,6 +102,8 @@ enum ErrorCode NSContainer_ReadFromFile(struct NSContainer *container, FILE *fil
         NSChunk_ReadFromFile(file, &container->chunks[i]);
     }
 
+    free(chunkOffsets);
+
     return ERR_CODE_OK;
 }
 
@@ -140,6 +142,7 @@ enum ErrorCode NSContainer_WriteToFile(struct NSContainer *container, FILE *file
     fseek(file, fileStart, SEEK_SET);
     fwrite(&header, sizeof(struct NSContainerHeader), 1, file);
     fwrite(chunkOffsets, sizeof(uint32_t), container->chunkCount, file);
+    free(chunkOffsets);
 
     return ERR_CODE_OK;
 }

@@ -94,6 +94,7 @@ enum ErrorCode WriteNSResourceDict(FILE *file, struct NSResourceDict *dict)
 
     MakeTreeFromResNames(dict->names, dict->entryCount, &tree, &treeSize);
     fwrite(tree, treeSize, 1, file);
+    free(tree);
 
     fwrite(&dict->dataEntrySize, sizeof(dict->dataEntrySize), 1, file);
     uint16_t namesOffset = 4 + dict->dataEntrySize * dict->entryCount;

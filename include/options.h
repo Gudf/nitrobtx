@@ -44,5 +44,6 @@ struct Options {
 };
 
 void ParseOptions(int argc, char **argv, struct Options *options);
+void FreeOptions(struct Options *options);
 
 #endif // NITROBTX_OPTIONS_H
