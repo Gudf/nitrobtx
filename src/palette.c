@@ -299,7 +299,6 @@ enum ErrorCode Palette_ReadJASCPAL(const char *path, struct Palette *palette)
 
     char *end;
     int numColors = strtol(lineBuf, &end, 10);
-    printf("colors: %u\n", numColors);
 
     if (end == lineBuf || numColors < 1 || numColors > 256) {
         fprintf(stderr, "Invalid JASC-PAL color count!\n");

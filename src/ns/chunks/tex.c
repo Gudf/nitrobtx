@@ -168,7 +168,6 @@ int WriteTexChunk(FILE *file, struct NSChunkTex *chunk)
             }
         }
         if (sameAs == -1) {
-            printf("%.*s: %u colors\n", 16, pal->name.asChars, pal->numColors);
             palOffsets[toWrite] = palDataSize;
             fwrite(pal->data, sizeof(struct NDSColor), pal->numColors, file);
             palDataSize += pal->numColors * sizeof(struct NDSColor);
