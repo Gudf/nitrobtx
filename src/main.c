@@ -166,7 +166,7 @@ static int PackBTX(struct Options *options)
 
 static char *ExtractFileNameFromPath(const char *path)
 {
-    int lastSepIdx = 0, lastPeriodIdx = 0;
+    int lastSepIdx = -1, lastPeriodIdx = 0;
 
     int i;
     for (i = 0; path[i] != 0; i++) {
@@ -182,9 +182,7 @@ static char *ExtractFileNameFromPath(const char *path)
         lastPeriodIdx = i;
     }
 
-    if (lastSepIdx != 0) {
-        lastSepIdx++;
-    }
+    lastSepIdx++;
     int fileNameLen = lastPeriodIdx - lastSepIdx;
 
     char *fileName = malloc(fileNameLen + 1);
