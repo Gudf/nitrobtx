@@ -17,6 +17,7 @@
 #include "palette.h"
 
 #include <png.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -162,23 +163,20 @@ static int ReadLine(FILE *fp, char lineBuf[16])
 
 static enum ErrorCode PalettesVec_Append(struct PalettesVec *vec, enum PaletteSource source, const char *path, const char *name, unsigned int copies, bool addSuffix)
 {
-    int nameLength = RES_NAME_LENGTH;
+    int maxNameLength = RES_NAME_LENGTH - (copies > 1 ? 1 + NumDigits(copies) : 0) - (addSuffix ? strlen("_pl") : 0);
 
-    if (copies > 1) {
-        int extraCharactersCount = 1 + NumDigits(copies) + (addSuffix ? strlen("_pl") : 0);
-        if (strlen(name) + extraCharactersCount > RES_NAME_LENGTH) {
-            nameLength -= extraCharactersCount;
-            fprintf(stderr, "Warning: palette basename %s is too long to fit the palette number suffix! It will be truncated to %u characters: '%.*s'.\n", name, nameLength, nameLength, name);
-        }
-    } else {
-        if (addSuffix) {
-            if (strlen(name) + strlen("_pl") > RES_NAME_LENGTH) {
-                nameLength -= strlen("_pl");
-                fprintf(stderr, "Warning: palette name %s is too long to fit the '_pl' suffix! It will be truncated to %u characters: '%.*s'.\n", name, nameLength, nameLength, name);
+    if (strlen(name) > maxNameLength) {
+        if (copies > 1) {
+            if (addSuffix) {
+                fprintf(stderr, "Warning: palette name %s is too long! It will be truncated to %u characters to fit the palette number and '_pl' suffixes: '%.*s'.\n", name, maxNameLength, maxNameLength, name);
+            } else {
+                fprintf(stderr, "Warning: palette name %s is too long! It will be truncated to %u characters to fit the palette number suffix: '%.*s'.\n", name, maxNameLength, maxNameLength, name);
             }
         } else {
-            if (strlen(name) > RES_NAME_LENGTH) {
-                fprintf(stderr, "Warning: palette name %s is too long! It will be truncated to %u characters: '%.*s'.\n", name, nameLength, nameLength, name);
+            if (addSuffix) {
+                fprintf(stderr, "Warning: palette name %s is too long! It will be truncated to %u characters to fit the '_pl' suffix: '%.*s'.\n", name, maxNameLength, maxNameLength, name);
+            } else {
+                fprintf(stderr, "Warning: palette name %s is too long! It will be truncated to %u characters: '%.*s'.\n", name, maxNameLength, maxNameLength, name);
             }
         }
     }
@@ -204,9 +202,9 @@ static enum ErrorCode PalettesVec_Append(struct PalettesVec *vec, enum PaletteSo
     char nameBuf[RES_NAME_LENGTH + 1] = { 0 };
 
     if (copies > 1) {
-        snprintf(nameBuf, RES_NAME_LENGTH + 1, "%.*s.%u%s", nameLength, name, 1, addSuffix ? "_pl" : "");
+        snprintf(nameBuf, RES_NAME_LENGTH + 1, "%.*s.%u%s", maxNameLength, name, 1, addSuffix ? "_pl" : "");
     } else {
-        snprintf(nameBuf, RES_NAME_LENGTH + 1, "%.*s%s", nameLength, name, addSuffix ? "_pl" : "");
+        snprintf(nameBuf, RES_NAME_LENGTH + 1, "%.*s%s", maxNameLength, name, addSuffix ? "_pl" : "");
     }
 
     CopyToResName(&pal->name, nameBuf);
@@ -215,7 +213,7 @@ static enum ErrorCode PalettesVec_Append(struct PalettesVec *vec, enum PaletteSo
         VecAppend(*vec, (struct Palette) { 0 });
         struct Palette *copy = &VecLast(*vec);
 
-        snprintf(nameBuf, RES_NAME_LENGTH + 1, "%.*s.%u%s", nameLength, name, i + 1, addSuffix ? "_pl" : "");
+        snprintf(nameBuf, RES_NAME_LENGTH + 1, "%.*s.%u%s", maxNameLength, name, i + 1, addSuffix ? "_pl" : "");
         CopyToResName(&copy->name, nameBuf);
         copy->numColors = pal->numColors;
         copy->unknown = pal->unknown;
