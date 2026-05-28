@@ -440,7 +440,9 @@ int TexturesVec_ExtendFromSpritesheetPNG(struct TexturesVec *textures, const str
 spritesheet_read_cleanup:
     png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
     fclose(fp);
-    fclose(namesFile);
+    if (namesFile) {
+        fclose(namesFile);
+    }
     free(pngBuffer);
     free(rowPointers);
 
