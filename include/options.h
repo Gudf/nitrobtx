@@ -1,6 +1,7 @@
 #ifndef NITROBTX_OPTIONS_H
 #define NITROBTX_OPTIONS_H
 
+#include "palette.h"
 #include "texture.h"
 #include "vec.h"
 
@@ -9,28 +10,9 @@ enum Mode {
     MODE_PACK,
 };
 
-enum PaletteInputType {
-    INPUT_TYPE_PNG,
-    INPUT_TYPE_JASC_PAL,
-};
-
-struct Settings {
-    enum Mode mode;
-    char *inputPath;
-    char *outputPath;
-};
-
-struct PaletteInput {
-    enum PaletteInputType inputType;
-    bool repeat;
-    int repeatCount;
-    bool addSuffix;
-    const char *name;
-    const char *path;
-};
-
 struct NSBTXInput {
     bool spritesheet;
+    bool combinedPalette;
     const char *path;
     const char *palettesPath;
 };

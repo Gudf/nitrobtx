@@ -31,6 +31,7 @@ struct TextureInput {
     int numFrames;
     int frameHeight;
     bool spritesheet;
+    bool combinedPalette;
     int palIdx;
     const char *name;
     const char *path;
@@ -63,7 +64,7 @@ struct Texture {
 MakeVecType(TexturesVec, struct Texture);
 
 int Texture_WritePNG(const struct Texture *texture, const struct Palette *palette, const char *filepath);
-int TexturesVec_ToSpritesheetPNG(const struct TexturesVec *textures, const struct Palette *palette, const char *filepath);
+int TexturesVec_ToSpritesheetPNG(const struct TexturesVec *textures, const struct Palette *palette, const char *filepath, bool combinedPalette);
 int TexturesVec_ExtendFromSpritesheetPNG(struct TexturesVec *textures, const struct TextureInput *texture);
 int TexturesVec_AppendFromPNG(struct TexturesVec *textures, const struct TextureInput *texture);
 void Texture_Free(struct Texture *texture);

@@ -345,9 +345,25 @@ void SortPalettesSmart(struct NSChunkTex *chunk)
     VecSort(chunk->palettes, ComparePalNamesSmart);
 }
 
-int TexChunkToPNGSpritesheet(const struct NSChunkTex *chunk, const char *path)
+int TexChunkToPNGSpritesheet(const struct NSChunkTex *chunk, const char *path, bool combinedPalette)
 {
-    return TexturesVec_ToSpritesheetPNG(&chunk->textures, chunk->palettes.n > 0 ? &VecGet(chunk->palettes, 0) : NULL, path);
+    if (!combinedPalette) {
+        return TexturesVec_ToSpritesheetPNG(&chunk->textures, chunk->palettes.n > 0 ? &VecGet(chunk->palettes, 0) : NULL, path, combinedPalette);
+    } else if (chunk->palettes.n == chunk->textures.n) {
+        struct Palette pal;
+        PalettesVec_Combine(&chunk->palettes, &pal);
+        if (pal.numColors > 256) {
+            fprintf(stderr, "Can't combine palettes with more than 256 total colors!\n");
+            Palette_Free(&pal);
+            return ERR_CODE_INPUT_INVALID;
+        }
+        int res = TexturesVec_ToSpritesheetPNG(&chunk->textures, &pal, path, combinedPalette);
+        Palette_Free(&pal);
+        return res;
+    } else {
+        fprintf(stderr, "Can't combine palettes when the number of textures and the number of palettes don't match!\n");
+        return ERR_CODE_INPUT_INVALID;
+    }
 }
 
 int TexChunkToDirectory(const struct NSChunkTex *chunk, const char *directory)

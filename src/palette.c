@@ -23,7 +23,9 @@
 
 #include "color.h"
 #include "common.h"
+#include "errors.h"
 #include "ns/resource_name.h"
+#include "vec.h"
 
 enum PalReadError {
     PAL_READ_SUCCESS,
@@ -161,12 +163,17 @@ static int ReadLine(FILE *fp, char lineBuf[16])
     }
 }
 
-static enum ErrorCode PalettesVec_Append(struct PalettesVec *vec, enum PaletteSource source, const char *path, const char *name, unsigned int copies, bool addSuffix)
+enum ErrorCode PalettesVec_Append(struct PalettesVec *vec, struct PaletteInput *in) // enum PaletteSource source, const char *path, const char *name, unsigned int multiPalCount, bool addSuffix)
 {
-    int maxNameLength = RES_NAME_LENGTH - (copies > 1 ? 1 + NumDigits(copies) : 0) - (addSuffix ? strlen("_pl") : 0);
+    int multiPalCount = in->multiPalCount;
+    bool addSuffix = in->addSuffix;
+    const char *name = in->name;
+    const char *path = in->path;
+
+    int maxNameLength = RES_NAME_LENGTH - (multiPalCount > 1 ? 1 + NumDigits(multiPalCount) : 0) - (addSuffix ? strlen("_pl") : 0);
 
     if (strlen(name) > maxNameLength) {
-        if (copies > 1) {
+        if (multiPalCount > 1) {
             if (addSuffix) {
                 fprintf(stderr, "Warning: palette name %s is too long! It will be truncated to %u characters to fit the palette number and '_pl' suffixes: '%.*s'.\n", name, maxNameLength, maxNameLength, name);
             } else {
@@ -181,58 +188,105 @@ static enum ErrorCode PalettesVec_Append(struct PalettesVec *vec, enum PaletteSo
         }
     }
 
-    VecAppend(*vec, (struct Palette) { 0 });
-
-    struct Palette *pal = &VecLast(*vec);
+    struct Palette tmp = { 0 };
 
     enum ErrorCode res;
-    switch (source) {
+    switch (in->inputType) {
     case PALETTE_SOURCE_PNG:
-        if ((res = Palette_ReadPNG(path, pal)) != ERR_CODE_OK) {
+        if ((res = Palette_ReadPNG(path, &tmp)) != ERR_CODE_OK) {
             return res;
         }
         break;
     case PALETTE_SOURCE_JASC_PAL:
-        if ((res = Palette_ReadJASCPAL(path, pal)) != ERR_CODE_OK) {
+        if ((res = Palette_ReadJASCPAL(path, &tmp)) != ERR_CODE_OK) {
             return res;
         }
         break;
     }
 
+    if (in->multiPalMode == MULTI_PALETTE_SPLIT && tmp.numColors % in->multiPalCount != 0) {
+        fprintf(stderr, "Cannot split palette %s into %u palettes of equal size cleanly!", in->path, in->multiPalCount);
+        Palette_Free(&tmp);
+        return ERR_CODE_INPUT_INVALID;
+    }
+
     char nameBuf[RES_NAME_LENGTH + 1] = { 0 };
 
-    if (copies > 1) {
-        snprintf(nameBuf, RES_NAME_LENGTH + 1, "%.*s.%u%s", maxNameLength, name, 1, addSuffix ? "_pl" : "");
-    } else {
+    if (in->multiPalMode == SINGLE_PALETTE) {
         snprintf(nameBuf, RES_NAME_LENGTH + 1, "%.*s%s", maxNameLength, name, addSuffix ? "_pl" : "");
+        CopyToResName(&tmp.name, nameBuf);
+        VecAppend(*vec, tmp);
+        return ERR_CODE_OK;
     }
 
-    CopyToResName(&pal->name, nameBuf);
-
-    for (int i = 1; i < copies; i++) {
+    for (int i = 0; i < multiPalCount; i++) {
         VecAppend(*vec, (struct Palette) { 0 });
-        struct Palette *copy = &VecLast(*vec);
+        struct Palette *pal = &VecLast(*vec);
 
         snprintf(nameBuf, RES_NAME_LENGTH + 1, "%.*s.%u%s", maxNameLength, name, i + 1, addSuffix ? "_pl" : "");
-        CopyToResName(&copy->name, nameBuf);
-        copy->numColors = pal->numColors;
-        copy->unknown = pal->unknown;
+        CopyToResName(&pal->name, nameBuf);
 
-        copy->data = calloc(copy->numColors, sizeof(*copy->data));
-        memcpy(copy->data, pal->data, copy->numColors * sizeof(struct NDSColor));
+        size_t offset = 0;
+        switch (in->multiPalMode) {
+        case SINGLE_PALETTE:
+            __builtin_unreachable();
+            break;
+        case MULTI_PALETTE_REPEAT:
+            offset = 0;
+            pal->numColors = tmp.numColors;
+            break;
+        case MULTI_PALETTE_SPLIT:
+            offset = i * tmp.numColors / in->multiPalCount;
+            pal->numColors = tmp.numColors / in->multiPalCount;
+        }
+        pal->unknown = tmp.unknown;
+
+        pal->data = calloc(pal->numColors, sizeof(*pal->data));
+        memcpy(pal->data, tmp.data + offset, pal->numColors * sizeof(struct NDSColor));
     }
+
+    Palette_Free(&tmp);
 
     return ERR_CODE_OK;
 }
 
-enum ErrorCode PalettesVec_AppendFromJASCPAL(struct PalettesVec *vec, const char *path, const char *name, unsigned int copies, bool addSuffix)
+enum ErrorCode PalettesVec_Combine(const struct PalettesVec *vec, struct Palette *out)
 {
-    return PalettesVec_Append(vec, PALETTE_SOURCE_JASC_PAL, path, name, copies, addSuffix);
-}
+    int colorsPerPalette = VecGet(*vec, 0).numColors;
 
-enum ErrorCode PalettesVec_AppendFromPNG(struct PalettesVec *vec, const char *path, const char *name, unsigned int copies, bool addSuffix)
-{
-    return PalettesVec_Append(vec, PALETTE_SOURCE_PNG, path, name, copies, addSuffix);
+    VecForEach (pal, *vec) {
+        if (pal->numColors != colorsPerPalette) {
+            fprintf(stderr, "Cannot combine palettes with differing numbers of colors!\n");
+            return ERR_CODE_INPUT_INVALID;
+        }
+    }
+
+    out->numColors = colorsPerPalette * vec->n;
+    out->name = VecGet(*vec, 0).name;
+    int lastCommon = RES_NAME_LENGTH - 1;
+
+    VecForEach (pal, *vec) {
+        for (int i = 0; i < lastCommon; i++) {
+            if (pal->name.asChars[i] != out->name.asChars[i]) {
+                lastCommon = i - 1;
+                break;
+            }
+        }
+    }
+
+    if (lastCommon != -1) {
+        for (int i = lastCommon + 1; i < RES_NAME_LENGTH; i++) {
+            out->name.asChars[i] = '\0';
+        }
+    }
+
+    out->data = calloc(out->numColors, sizeof(*out->data));
+
+    for (int i = 0; i < vec->n; i++) {
+        memcpy(&out->data[i * colorsPerPalette], VecGet(*vec, i).data, colorsPerPalette * sizeof(*out->data));
+    }
+
+    return ERR_CODE_OK;
 }
 
 enum ErrorCode Palette_ReadJASCPAL(const char *path, struct Palette *palette)

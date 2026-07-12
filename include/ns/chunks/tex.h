@@ -37,7 +37,7 @@ struct NSChunkTex *MakeTexChunk(void);
 int GetTexelSizeForTexFmt(enum TextureFormat format);
 int ReadTexChunk(FILE *file, struct NSChunkTex *chunk);
 int WriteTexChunk(FILE *file, struct NSChunkTex *chunk);
-int TexChunkToPNGSpritesheet(const struct NSChunkTex *chunk, const char *path);
+int TexChunkToPNGSpritesheet(const struct NSChunkTex *chunk, const char *path, bool combinedPalette);
 int TexChunkToDirectory(const struct NSChunkTex *chunk, const char *directory);
 void FreeTexChunk(struct NSChunkTex *chunk);
 int LengthToTexSize(uint32_t x);

@@ -29,9 +29,15 @@
 #include "errors.h"
 #include "ns/chunks/tex.h"
 #include "palette.h"
+#include "vec.h"
 
-static enum TextureFormat DetermineTexFmtFromPNG(int bitDepth, int colorType);
+#define MIN_PAL_ALIGNMENT 4
+
+static uint32_t CalcBitDepth(uint32_t numColors);
+static enum TextureFormat DetermineTexFmt(int minBitDepth, int colorType, bool translucent);
+static bool PNGBitDepthMatchesFmt(int pngBitDepth, enum TextureFormat format);
 static int AppendToPNG(const struct Texture *texture, const struct Palette *palette, png_structp png_ptr, png_infop info_ptr);
+static int UnpackTo8BPPWithOffset(const struct Texture *in, struct Texture *out, unsigned int offset);
 static uint8_t GetRowFillValue(png_bytep pngRow, int width, int bitDepth);
 static int GetPNGBitdepthForTexFmt(enum TextureFormat format);
 static int GetDestPNGColorTypeForTexFmt(enum TextureFormat format);
@@ -41,8 +47,9 @@ static int PNGRectToTexture(png_bytepp pngRows, int startRow, int bitDepth, int 
 static int ReadResNameLine(FILE *fp, struct ResourceName *resName);
 static void PackTo2BPP(png_structp png_ptr, png_row_infop row_info, png_bytep data);
 static void PackTo4BPP(png_structp png_ptr, png_row_infop row_info, png_bytep data);
+static void ReduceColors8BPP(png_structp png_ptr, png_row_infop row_info, png_bytep data);
 
-int TexturesVec_ToSpritesheetPNG(const struct TexturesVec *textures, const struct Palette *palette, const char *filepath)
+int TexturesVec_ToSpritesheetPNG(const struct TexturesVec *textures, const struct Palette *palette, const char *filepath, bool combinedPalette)
 {
     if (textures->n == 0) {
         return 0;
@@ -83,6 +90,18 @@ int TexturesVec_ToSpritesheetPNG(const struct TexturesVec *textures, const struc
         pngColorType = PNG_COLOR_TYPE_GRAY;
     }
 
+    struct TexturesVec *newTextures = NULL;
+    if (combinedPalette && pngColorType == PNG_COLOR_TYPE_PALETTE) {
+        newTextures = malloc(sizeof(struct TexturesVec));
+        VecInit(*newTextures, textures->n);
+        for (int i = 0; i < textures->n; i++) {
+            VecAppend(*newTextures, (struct Texture) { 0 });
+            UnpackTo8BPPWithOffset(&VecGet(*textures, i), &VecGet(*newTextures, i), i * palette->numColors / textures->n);
+        }
+        format = TEX_FORMAT_8BPP_PALETTED;
+        textures = newTextures;
+    }
+
     png_set_IHDR(png_ptr, info_ptr, width, frameHeight * textures->n, GetPNGBitdepthForTexFmt(format), pngColorType, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 
     if (GetPNGBitdepthForTexFmt(format) < 8) {
@@ -112,6 +131,14 @@ int TexturesVec_ToSpritesheetPNG(const struct TexturesVec *textures, const struc
 
     png_destroy_write_struct(&png_ptr, &info_ptr);
     fclose(fp);
+
+    if (newTextures) {
+        VecForEach (tex, *newTextures) {
+            Texture_Free(tex);
+        }
+        VecFree(*newTextures);
+        free(newTextures);
+    }
 
     return res;
 }
@@ -251,7 +278,6 @@ static int AppendToPNG(const struct Texture *texture, const struct Palette *pale
 
 int TexturesVec_ExtendFromSpritesheetPNG(struct TexturesVec *textures, const struct TextureInput *texture)
 {
-
     enum ErrorCode res = ERR_CODE_OK;
 
     enum TextureFormat format = texture->format;
@@ -294,40 +320,15 @@ int TexturesVec_ExtendFromSpritesheetPNG(struct TexturesVec *textures, const str
     png_read_info(png_ptr, info_ptr);
 
     png_uint_32 width, height;
-    int bitDepth, colorType;
+    int pngBitDepth, pngColorType;
 
-    png_get_IHDR(png_ptr, info_ptr, &width, &height, &bitDepth, &colorType, NULL, NULL, NULL);
+    png_get_IHDR(png_ptr, info_ptr, &width, &height, &pngBitDepth, &pngColorType, NULL, NULL, NULL);
 
-    if (format == TEX_FORMAT_AUTO) {
-        format = DetermineTexFmtFromPNG(bitDepth, colorType);
-        if (format == TEX_FORMAT_INVALID) {
-            fprintf(stderr, "Couldn't automatically determine a NDS texture format for texture '%s'\n", texture->path);
-            res = ERR_CODE_UNSUPPORTED_FORMAT;
-            goto spritesheet_read_cleanup;
-        }
-    }
-
-    if (!IsPNGColorTypeValidForFmt(format, colorType)) {
-        png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
-        fclose(fp);
-        fprintf(stderr, "File '%s' uses an unsupported color type for conversion to NDS texture format %u!\n", texture->path, format);
-        res = ERR_CODE_INPUT_INVALID;
-        goto spritesheet_read_cleanup;
-    }
-
-    if (bitDepth > GetPNGBitdepthForTexFmt(format)) {
-        png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
-        fclose(fp);
-        fprintf(stderr, "File '%s' has a bit depth too high for conversion to NDS texture format %u!\n", texture->path, format);
-        res = ERR_CODE_INPUT_INVALID;
-        goto spritesheet_read_cleanup;
-    }
+    int bitDepth = pngBitDepth;
 
     if (frameHeight == -1) {
         frameHeight = height / numFrames;
         if (height % numFrames != 0) {
-            png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
-            fclose(fp);
             fprintf(stderr, "Spritesheet texture '%s' doesn't divide cleanly into %u frames!\n", texture->path, numFrames);
             res = ERR_CODE_INPUT_INVALID;
             goto spritesheet_read_cleanup;
@@ -337,36 +338,78 @@ int TexturesVec_ExtendFromSpritesheetPNG(struct TexturesVec *textures, const str
     if (numFrames == -1) {
         numFrames = height / frameHeight;
         if (height % frameHeight != 0) {
-            png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
-            fclose(fp);
             fprintf(stderr, "Spritesheet texture '%s' doesn't divide cleanly into frames of height %u!\n", texture->path, frameHeight);
             res = ERR_CODE_INPUT_INVALID;
             goto spritesheet_read_cleanup;
         }
     }
 
-    if (colorType == PNG_COLOR_TYPE_RGB) {
+    png_colorp pal;
+    int numColors;
+    if (texture->combinedPalette) {
+        if (png_get_PLTE(png_ptr, info_ptr, &pal, &numColors)) {
+            if (numColors % (numFrames * MIN_PAL_ALIGNMENT) != 0) {
+                fprintf(stderr, "Palette from spritesheet '%s' doesn't divide cleanly into %u palettes whose sizes are a multiple of %u!\n", texture->path, numFrames, MIN_PAL_ALIGNMENT);
+                res = ERR_CODE_INPUT_INVALID;
+                goto spritesheet_read_cleanup;
+            } else {
+                numColors /= numFrames;
+                bitDepth = CalcBitDepth(numColors);
+            }
+        } else {
+            fprintf(stderr, "File '%s' has not palette but was used with the combined palette flag!\n", texture->path);
+            res = ERR_CODE_INPUT_INVALID;
+            goto spritesheet_read_cleanup;
+        }
+    }
+
+    if (format == TEX_FORMAT_AUTO) {
+        format = DetermineTexFmt(bitDepth, pngColorType, texture->transparencyInput != NULL);
+        if (format == TEX_FORMAT_INVALID) {
+            fprintf(stderr, "Couldn't automatically determine a NDS texture format for texture '%s'\n", texture->path);
+            res = ERR_CODE_UNSUPPORTED_FORMAT;
+            goto spritesheet_read_cleanup;
+        }
+    }
+
+    if (!IsPNGColorTypeValidForFmt(format, pngColorType)) {
+        fprintf(stderr, "File '%s' uses an unsupported color type for conversion to NDS texture format %u!\n", texture->path, format);
+        res = ERR_CODE_INPUT_INVALID;
+        goto spritesheet_read_cleanup;
+    }
+
+    if (bitDepth > GetPNGBitdepthForTexFmt(format)) {
+        fprintf(stderr, "File '%s' has a bit depth too high for conversion to NDS texture format %u!\n", texture->path, format);
+        res = ERR_CODE_INPUT_INVALID;
+        goto spritesheet_read_cleanup;
+    }
+
+    if (pngColorType == PNG_COLOR_TYPE_RGB) {
         png_set_add_alpha(png_ptr, 0xffff, PNG_FILLER_AFTER);
     }
 
     bool unpacked = false;
-    if (bitDepth < 8) {
+    if (pngColorType == PNG_COLOR_TYPE_PALETTE || pngColorType == PNG_COLOR_TYPE_GRAY) {
         png_set_packswap(png_ptr);
 
-        if (GetPNGBitdepthForTexFmt(format) > bitDepth) {
+        if (texture->combinedPalette || !PNGBitDepthMatchesFmt(pngBitDepth, format)) {
             unpacked = true;
             png_set_packing(png_ptr);
             switch (format) {
             case TEX_FORMAT_2BPP_PALETTED:
                 bitDepth = 2;
-                png_set_user_transform_info(png_ptr, NULL, bitDepth, 1);
+                png_set_user_transform_info(png_ptr, NULL, bitDepth, 1); // numColors has to be a multiple of 4 and PackTo2BPP already performs mod 4
                 png_set_read_user_transform_fn(png_ptr, PackTo2BPP);
                 break;
             case TEX_FORMAT_4BPP_PALETTED:
                 bitDepth = 4;
-                png_set_user_transform_info(png_ptr, NULL, bitDepth, 1);
+                png_set_user_transform_info(png_ptr, &numColors, bitDepth, 1);
                 png_set_read_user_transform_fn(png_ptr, PackTo4BPP);
                 break;
+            case TEX_FORMAT_8BPP_PALETTED:
+                bitDepth = 8;
+                png_set_user_transform_info(png_ptr, &numColors, bitDepth, 1);
+                png_set_read_user_transform_fn(png_ptr, ReduceColors8BPP);
             default:
                 break;
             }
@@ -449,7 +492,7 @@ spritesheet_read_cleanup:
     free(pngBuffer);
     free(rowPointers);
 
-    return ERR_CODE_OK;
+    return res;
 }
 
 int TexturesVec_AppendFromPNG(struct TexturesVec *textures, const struct TextureInput *texture)
@@ -491,7 +534,7 @@ int TexturesVec_AppendFromPNG(struct TexturesVec *textures, const struct Texture
     png_get_IHDR(png_ptr, info_ptr, &width, &height, &bitDepth, &colorType, NULL, NULL, NULL);
 
     if (format == TEX_FORMAT_AUTO) {
-        format = DetermineTexFmtFromPNG(bitDepth, colorType);
+        format = DetermineTexFmt(bitDepth, colorType, texture->transparencyInput != NULL);
         if (format == TEX_FORMAT_INVALID) {
             fprintf(stderr, "Couldn't automatically determine a NDS texture format for texture '%s'\n", texture->path);
             return ERR_CODE_UNSUPPORTED_FORMAT;
@@ -645,6 +688,64 @@ void Texture_Free(struct Texture *texture)
         texture->texelData.rawData = NULL;
     }
     texture->dataByteCount = 0;
+}
+
+static int UnpackTo8BPPWithOffset(const struct Texture *in, struct Texture *out, unsigned int offset)
+{
+    switch (in->format) {
+    case TEX_FORMAT_2BPP_PALETTED:
+    case TEX_FORMAT_4BPP_PALETTED:
+    case TEX_FORMAT_8BPP_PALETTED:
+        break;
+    case TEX_FORMAT_A3I5_TRANS:
+    case TEX_FORMAT_A5I3_TRANS:
+    case TEX_FORMAT_4X4_COMPRESSED:
+    case TEX_FORMAT_DIRECT_COLOR:
+    default:
+        return ERR_CODE_INPUT_INVALID;
+    }
+
+    out->format = TEX_FORMAT_8BPP_PALETTED;
+    out->width = in->width;
+    out->height = in->height;
+    out->name = in->name;
+    out->transparent = in->transparent;
+
+    out->dataByteCount = out->width * out->height;
+    out->texelData.rawData = malloc(out->dataByteCount);
+
+    uint8_t *inData = in->texelData.rawData;
+    uint8_t *outData = out->texelData.rawData;
+
+    for (int inIdx = 0, outIdx = 0; inIdx < in->dataByteCount; inIdx++) {
+        uint8_t inByte = inData[inIdx];
+        uint8_t tmp;
+        switch (in->format) {
+        case TEX_FORMAT_2BPP_PALETTED:
+            tmp = ((inByte & 0b00000011) >> 0);
+            outData[outIdx++] = in->transparent && tmp == 0 ? 0 : tmp + offset;
+            tmp = ((inByte & 0b00001100) >> 2);
+            outData[outIdx++] = in->transparent && tmp == 0 ? 0 : tmp + offset;
+            tmp = ((inByte & 0b00110000) >> 4);
+            outData[outIdx++] = in->transparent && tmp == 0 ? 0 : tmp + offset;
+            tmp = ((inByte & 0b11000000) >> 6);
+            outData[outIdx++] = in->transparent && tmp == 0 ? 0 : tmp + offset;
+            break;
+        case TEX_FORMAT_4BPP_PALETTED:
+            tmp = ((inByte & 0b00001111) >> 0);
+            outData[outIdx++] = in->transparent && tmp == 0 ? 0 : tmp + offset;
+            tmp = ((inByte & 0b11110000) >> 4);
+            outData[outIdx++] = in->transparent && tmp == 0 ? 0 : tmp + offset;
+            break;
+        case TEX_FORMAT_8BPP_PALETTED:
+            outData[outIdx++] = in->transparent && inByte == 0 ? 0 : inByte + offset;
+            break;
+        default:
+            break;
+        }
+    }
+
+    return ERR_CODE_OK;
 }
 
 static uint8_t GetRowFillValue(png_bytep pngRow, int width, int bitDepth)
@@ -801,41 +902,99 @@ static void PackTo2BPP(png_structp png_ptr, png_row_infop row_info, png_bytep da
 
     row_info->pixel_depth = 2;
 }
+
 static void PackTo4BPP(png_structp png_ptr, png_row_infop row_info, png_bytep data)
 {
     uint8_t *source = data;
     uint8_t *dest = data;
 
+    int *png_transform_user_ptr = png_get_user_transform_ptr(png_ptr);
+    int numColorsPerFrame = 16;
+    if (png_transform_user_ptr) {
+        numColorsPerFrame = *png_transform_user_ptr;
+    }
+
     for (int rowIdx = 0; rowIdx < row_info->width / 2; rowIdx++) {
-        uint8_t val = (*source++ & 0b1111);
-        val |= (*source++ & 0b1111) << 4;
+        uint8_t val = ((*source++ % numColorsPerFrame) & 0b1111);
+        val |= ((*source++ % numColorsPerFrame) & 0b1111) << 4;
         *dest++ = val;
     }
 
     if (row_info->width % 2) {
-        *dest = *source & 0b1111;
+        *dest = (*source % numColorsPerFrame) & 0b1111;
     }
 
     row_info->pixel_depth = 4;
 }
 
-static enum TextureFormat DetermineTexFmtFromPNG(int bitDepth, int colorType)
+static void ReduceColors8BPP(png_structp png_ptr, png_row_infop row_info, png_bytep data)
+{
+    uint8_t *source = data;
+    uint8_t *dest = data;
+
+    int *png_transform_user_ptr = png_get_user_transform_ptr(png_ptr);
+    int numColorsPerFrame = 256;
+    if (png_transform_user_ptr) {
+        numColorsPerFrame = *png_transform_user_ptr;
+    }
+
+    for (int rowIdx = 0; rowIdx < row_info->width; rowIdx++) {
+        *dest++ = *source++ % numColorsPerFrame;
+    }
+
+    row_info->pixel_depth = 8;
+}
+
+static enum TextureFormat DetermineTexFmt(int minBitDepth, int colorType, bool translucent)
 {
     if (colorType == PNG_COLOR_TYPE_PALETTE || colorType == PNG_COLOR_TYPE_GRAY) {
-        switch (bitDepth) {
-        case 1:
-        case 2:
-            return TEX_FORMAT_2BPP_PALETTED;
-        case 4:
-            return TEX_FORMAT_4BPP_PALETTED;
-        case 8:
-            return TEX_FORMAT_8BPP_PALETTED;
+        if (!translucent) {
+            if (minBitDepth <= 2) {
+                return TEX_FORMAT_2BPP_PALETTED;
+            }
+            if (minBitDepth <= 4) {
+                return TEX_FORMAT_4BPP_PALETTED;
+            }
+            if (minBitDepth <= 8) {
+                return TEX_FORMAT_8BPP_PALETTED;
+            }
+        } else {
+            if (minBitDepth <= 3) {
+                return TEX_FORMAT_A5I3_TRANS;
+            }
+            if (minBitDepth <= 5) {
+                return TEX_FORMAT_A3I5_TRANS;
+            }
         }
     } else if (colorType == PNG_COLOR_TYPE_RGB || colorType == PNG_COLOR_TYPE_RGBA) {
         return TEX_FORMAT_DIRECT_COLOR;
     }
 
     return TEX_FORMAT_INVALID;
+}
+
+static bool PNGBitDepthMatchesFmt(int pngBitDepth, enum TextureFormat format)
+{
+    switch (format) {
+    case TEX_FORMAT_2BPP_PALETTED:
+        return pngBitDepth == 2;
+    case TEX_FORMAT_4BPP_PALETTED:
+        return pngBitDepth == 4;
+    case TEX_FORMAT_8BPP_PALETTED:
+        return pngBitDepth == 8;
+    default:
+        return false;
+    }
+}
+
+static uint32_t CalcBitDepth(uint32_t numColors)
+{
+    numColors--;
+    int d = 1;
+    while (numColors >>= 1) {
+        d++;
+    }
+    return d;
 }
 
 static int ReadResNameLine(FILE *fp, struct ResourceName *resName)

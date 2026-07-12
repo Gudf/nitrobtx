@@ -89,7 +89,7 @@ static int DumpBTX(struct Options *options)
     }
 
     if (VecGet(options->nsbtxs, 0).spritesheet) {
-        res = TexChunkToPNGSpritesheet(container.chunks[0].texChunk, options->outputPath);
+        res = TexChunkToPNGSpritesheet(container.chunks[0].texChunk, options->outputPath, VecGet(options->nsbtxs, 0).combinedPalette);
         if (res == ERR_CODE_OK && VecGet(options->nsbtxs, 0).palettesPath) {
             res = TexChunkPalettesToDirectory(container.chunks[0].texChunk, VecGet(options->nsbtxs, 0).palettesPath);
         }
@@ -121,7 +121,7 @@ static int PackBTX(struct Options *options)
             }
             int repeatCount = chunk->textures.n - vecLen;
             if (tex->palIdx != -1) {
-                VecGet(options->palettes, tex->palIdx).repeatCount = repeatCount;
+                VecGet(options->palettes, tex->palIdx).multiPalCount = repeatCount;
             }
         } else {
             if ((tmp = TexturesVec_AppendFromPNG(&chunk->textures, tex)) != ERR_CODE_OK) {
@@ -141,18 +141,7 @@ static int PackBTX(struct Options *options)
             pal->name = ExtractFileNameFromPath(pal->path);
             freeName = true;
         }
-        switch (pal->inputType) {
-        case INPUT_TYPE_PNG:
-            if ((tmp = PalettesVec_AppendFromPNG(&chunk->palettes, pal->path, pal->name, pal->repeat ? pal->repeatCount : 1, pal->addSuffix)) != ERR_CODE_OK) {
-                res = tmp;
-            }
-            break;
-        case INPUT_TYPE_JASC_PAL:
-            if ((tmp = PalettesVec_AppendFromJASCPAL(&chunk->palettes, pal->path, pal->name, pal->repeat ? pal->repeatCount : 1, pal->addSuffix)) != ERR_CODE_OK) {
-                res = tmp;
-            }
-            break;
-        }
+        PalettesVec_Append(&chunk->palettes, pal);
         if (freeName) {
             free((void *)pal->name);
         }

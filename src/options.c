@@ -53,6 +53,7 @@ enum OptionCharacters {
     OPTION_NUM_FRAMES = 'F',
     OPTION_FRAME_HEIGHT = 'H',
     OPTION_REPEAT_PALETTE = 'r',
+    OPTION_COMBINED_PALETTE = 'c',
     OPTION_PALETTE_SUFFIX = 'S',
     OPTION_PALETTES_DIR = 'd',
     OPTION_INVALID = '?',
@@ -83,6 +84,7 @@ static const struct optparse_long longopts_subcommands[] = {
     { "num-frames", OPTION_NUM_FRAMES, OPTPARSE_REQUIRED },
     { "frame-height", OPTION_FRAME_HEIGHT, OPTPARSE_REQUIRED },
     { "repeat-palette", OPTION_REPEAT_PALETTE, OPTPARSE_NONE },
+    { "combined-palette", OPTION_COMBINED_PALETTE, OPTPARSE_NONE },
     { "palette-suffix", OPTION_PALETTE_SUFFIX, OPTPARSE_NONE },
     { "palettes-dir", OPTION_PALETTES_DIR, OPTPARSE_REQUIRED },
     { "help", OPTION_HELP, OPTPARSE_NONE },
@@ -295,11 +297,19 @@ static void ParsePackOptions(char *progName, char **argv, struct Options *option
             VecLast(options->textures).palIdx = options->palettes.n - 1;
             break;
         case OPTION_REPEAT_PALETTE:
-            if (curr != CURRENT_INPUT_PALETTE) {
-                fprintf(stderr, "Option '%s' can only be passed after a palette input!\n", argv[opts.optind - 1]);
+            if (curr != CURRENT_INPUT_PALETTE || !(VecLast(options->palettes).inputType == INPUT_TYPE_PNG && VecLast(options->textures).spritesheet)) {
+                fprintf(stderr, "Option '%s' can only be passed after a spritesheet texture palette input!\n", argv[opts.optind - 1]);
                 exit(1);
             }
-            VecLast(options->palettes).repeat = true;
+            VecLast(options->palettes).multiPalMode = MULTI_PALETTE_REPEAT;
+            break;
+        case OPTION_COMBINED_PALETTE:
+            if (curr != CURRENT_INPUT_PALETTE || !(VecLast(options->palettes).inputType == INPUT_TYPE_PNG && VecLast(options->textures).spritesheet)) {
+                fprintf(stderr, "Option '%s' can only be passed after a spritesheet texture palette input!\n", argv[opts.optind - 1]);
+                exit(1);
+            }
+            VecLast(options->palettes).multiPalMode = MULTI_PALETTE_SPLIT;
+            VecLast(options->textures).combinedPalette = true;
             break;
         case OPTION_PALETTE_SUFFIX:
             if (curr != CURRENT_INPUT_PALETTE) {
@@ -346,7 +356,16 @@ static void ParseDumpOptions(char *progName, char **argv, struct Options *option
             VecGet(options->nsbtxs, 0).spritesheet = true;
             break;
         case OPTION_PALETTES_DIR:
+            if (!VecGet(options->nsbtxs, 0).spritesheet) {
+                fprintf(stderr, "Options %s can only be used with a spritesheet NSBTX!\n", argv[opts.optind - 2]);
+            }
             VecGet(options->nsbtxs, 0).palettesPath = opts.optarg;
+            break;
+        case OPTION_COMBINED_PALETTE:
+            if (!VecGet(options->nsbtxs, 0).spritesheet) {
+                fprintf(stderr, "Options %s can only be used with a spritesheet NSBTX!\n", argv[opts.optind - 1]);
+            }
+            VecGet(options->nsbtxs, 0).combinedPalette = true;
             break;
         case OPTION_HELP:
             PrintUsage(stdout, progName);
