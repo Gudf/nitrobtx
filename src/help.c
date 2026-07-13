@@ -72,7 +72,7 @@ void PrintUsage(FILE *out, char *progPath)
     fprintf(out, "                              used as a base name, and gets a frame number appended.\n");
     fprintf(out, " --repeat-palette, -r         For palettes from a spritesheet PNG, repeat the palette as many times\n");
     fprintf(out, "                              as the number of frames in the spritesheet.\n");
-    fprintf(out, " --combine-palette            For palettes from a spritesheet PNG, split the palette into as many\n");
+    fprintf(out, " --combined-palette           For palettes from a spritesheet PNG, split the palette into as many\n");
     fprintf(out, "                              parts as the number of frames in the spritesheet.\n");
     fprintf(out, "\n");
     fprintf(out, "\n");
@@ -82,7 +82,7 @@ void PrintUsage(FILE *out, char *progPath)
     fprintf(out, "                              PNG file with the textures layed out vertically.\n");
     fprintf(out, " --palettes-dir <path>,       If '--spritesheet' is passed, a directory to dump the individual\n");
     fprintf(out, "  -d <path>                   palettes into.\n");
-    fprintf(out, " --combine-palette, -c        If '--spritesheet' is passed, combine all the palettes in the input\n");
+    fprintf(out, " --combined-palette, -c       If '--spritesheet' is passed, combine all the palettes in the input\n");
     fprintf(out, "                              into a single PNG and applies the corresponding colors to each frame.\n");
     fprintf(out, "                              Requires the number of textures and the number of palettes to be equal.\n");
 }
