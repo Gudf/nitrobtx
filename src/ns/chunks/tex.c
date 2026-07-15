@@ -27,6 +27,10 @@
 #include "texture.h"
 #include "vec.h"
 
+enum TexChunkPaletteFlags {
+    TEX_CHUNK_HAS_4_COLOR_PLTT = 0x8000,
+};
+
 struct NSChunkTexHeader {
     union Magic magic;
     uint32_t size;
@@ -94,6 +98,10 @@ int WriteTexChunk(FILE *file, struct NSChunkTex *chunk)
             .tSize = tSize,
             .fillsTexSize = (8 << sSize) == tex->width && (8 << tSize) == tex->height,
         };
+
+        if (tex->format == TEX_FORMAT_2BPP_PALETTED) {
+            header.palettesFlag |= TEX_CHUNK_HAS_4_COLOR_PLTT;
+        }
     }
 
     struct NSResourceDict palDict = {
@@ -107,7 +115,7 @@ int WriteTexChunk(FILE *file, struct NSChunkTex *chunk)
         palDict.names[i] = VecGet(chunk->palettes, i).name;
 
         ((struct PaletteDictData *)palDict.data)[i] = (struct PaletteDictData) {
-            .unknown2 = VecGet(chunk->palettes, i).unknown,
+            .is4Color = VecGet(chunk->palettes, i).is4Color,
         };
     }
 
@@ -315,7 +323,7 @@ static int ReadPalettes(FILE *file, struct NSChunkTexHeader *header, struct NSCh
         fseek(file, chunkStart + header->paletteDataOffset + (palMeta.plttOffset << 3), SEEK_SET);
         fread(pal->data, pal->numColors, sizeof(struct NDSColor), file);
 
-        pal->unknown = palMeta.unknown2;
+        pal->is4Color = palMeta.is4Color;
     }
 
     FreeResourceDict(palettesDict);

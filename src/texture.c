@@ -31,7 +31,7 @@
 #include "palette.h"
 #include "vec.h"
 
-#define MIN_PAL_ALIGNMENT 4
+#define MIN_PAL_ALIGNMENT 8
 
 static uint32_t CalcBitDepth(uint32_t numColors);
 static enum TextureFormat DetermineTexFmt(int minBitDepth, int colorType, bool translucent);

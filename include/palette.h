@@ -48,7 +48,7 @@ struct Palette {
     struct ResourceName name;
     struct NDSColor *data;
     int numColors;
-    bool unknown;
+    bool is4Color;
 };
 
 MakeVecType(PalettesVec, struct Palette);

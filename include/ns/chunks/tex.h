@@ -42,7 +42,7 @@ struct TextureDictData {
 struct PaletteDictData {
     uint16_t plttOffset : 12;
     uint16_t unused1_4 : 4;
-    uint16_t unknown2;
+    uint16_t is4Color;
 };
 
 struct NSChunkTex {

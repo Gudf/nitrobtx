@@ -239,7 +239,7 @@ enum ErrorCode PalettesVec_Append(struct PalettesVec *vec, struct PaletteInput *
             offset = i * tmp.numColors / in->multiPalCount;
             pal->numColors = tmp.numColors / in->multiPalCount;
         }
-        pal->unknown = tmp.unknown;
+        pal->is4Color = tmp.is4Color;
 
         pal->data = calloc(pal->numColors, sizeof(*pal->data));
         memcpy(pal->data, tmp.data + offset, pal->numColors * sizeof(struct NDSColor));
@@ -340,8 +340,8 @@ enum ErrorCode Palette_ReadJASCPAL(const char *path, struct Palette *palette)
         goto cleanup;
     }
 
-    palette->numColors = numColors;
-    palette->data = calloc(numColors, sizeof(*palette->data));
+    palette->numColors = numColors < 8 ? 8 : numColors;
+    palette->data = calloc(palette->numColors, sizeof(*palette->data));
 
     for (int i = 0; i < numColors; i++) {
         ReadLine(fp, lineBuf);
@@ -353,6 +353,11 @@ enum ErrorCode Palette_ReadJASCPAL(const char *path, struct Palette *palette)
         }
 
         palette->data[i] = RGBA8ToNDSColor(color);
+    }
+
+    for (int i = numColors; i < palette->numColors; i++) {
+        palette->is4Color = true;
+        palette->data[i] = (struct NDSColor) { 0 };
     }
 
     goto cleanup;
@@ -391,11 +396,16 @@ enum ErrorCode Palette_ReadPNG(const char *inputPath, struct Palette *out)
         return ERR_CODE_INPUT_INVALID;
     }
 
-    out->numColors = num_palette;
-    out->data = calloc(num_palette, sizeof(struct NDSColor));
+    out->numColors = num_palette < 8 ? 8 : num_palette;
+    out->data = calloc(out->numColors, sizeof(struct NDSColor));
 
     for (int i = 0; i < num_palette; i++) {
         out->data[i] = PNGToNDSColor(palette[i]);
+    }
+
+    for (int i = num_palette; i < out->numColors; i++) {
+        out->is4Color = true;
+        out->data[i] = (struct NDSColor) { 0 };
     }
 
     png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
