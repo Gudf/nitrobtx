@@ -53,9 +53,16 @@ enum ErrorCode ReadNSResourceDict(FILE *file, struct NSResourceDict *dict)
     // }
 
     fseek(file, dictStart + header.dataOffset, SEEK_SET);
-    fread(&dict->dataEntrySize, sizeof(uint16_t), 1, file);
+    nRead = fread(&dict->dataEntrySize, sizeof(uint16_t), 1, file);
+    if (nRead != 1) {
+        return ERR_CODE_INPUT_INVALID;
+    }
+
     uint16_t namesOffset;
-    fread(&namesOffset, sizeof(uint16_t), 1, file);
+    nRead = fread(&namesOffset, sizeof(uint16_t), 1, file);
+    if (nRead != 1) {
+        return ERR_CODE_INPUT_INVALID;
+    }
 
     dict->data = calloc(dict->entryCount, dict->dataEntrySize);
     nRead = fread(dict->data, dict->dataEntrySize, dict->entryCount, file);

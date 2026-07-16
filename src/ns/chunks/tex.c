@@ -265,14 +265,23 @@ static int ReadTextures(FILE *file, struct NSChunkTexHeader *header, struct NSCh
             tex->texelData.chunkAttrs = malloc(tex->dataByteCount / 2);
 
             fseek(file, chunkStart + header->comprTexDataOffs + (texMetadata.textureOffset << 3), SEEK_SET);
-            fread(tex->texelData.chunks, 1, tex->dataByteCount, file);
+            int nRead = fread(tex->texelData.chunks, 1, tex->dataByteCount, file);
+            if (nRead != tex->dataByteCount) {
+                return 1;
+            }
 
             fseek(file, chunkStart + header->comprTexAttrOffs + (texMetadata.textureOffset << 2), SEEK_SET);
-            fread(tex->texelData.chunkAttrs, 1, tex->dataByteCount / 2, file);
+            nRead = fread(tex->texelData.chunkAttrs, 1, tex->dataByteCount / 2, file);
+            if (nRead != tex->dataByteCount / 2) {
+                return 1;
+            }
         } else {
             tex->texelData.rawData = malloc(tex->dataByteCount);
             fseek(file, chunkStart + header->textureDataOffset + (texMetadata.textureOffset << 3), SEEK_SET);
-            fread(tex->texelData.rawData, 1, tex->dataByteCount, file);
+            int nRead = fread(tex->texelData.rawData, 1, tex->dataByteCount, file);
+            if (nRead != tex->dataByteCount) {
+                return 1;
+            }
         }
     }
 
@@ -321,7 +330,10 @@ static int ReadPalettes(FILE *file, struct NSChunkTexHeader *header, struct NSCh
         pal->numColors = ((paletteEnd - palMeta.plttOffset) << 3) / (sizeof(struct NDSColor));
         pal->data = calloc(pal->numColors, sizeof(struct NDSColor));
         fseek(file, chunkStart + header->paletteDataOffset + (palMeta.plttOffset << 3), SEEK_SET);
-        fread(pal->data, pal->numColors, sizeof(struct NDSColor), file);
+        int nRead = fread(pal->data, sizeof(struct NDSColor), pal->numColors, file);
+        if (nRead != pal->numColors) {
+            return 1;
+        }
 
         pal->is4Color = palMeta.is4Color;
     }
