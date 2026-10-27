@@ -20,7 +20,7 @@
 
 void PrintVersion(FILE *out)
 {
-    fprintf(out, "nitrobtx 0.0.1\n");
+    fprintf(out, "nitrobtx 0.0.2\n");
 }
 
 void PrintUsage(FILE *out, char *progPath)
