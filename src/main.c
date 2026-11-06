@@ -120,7 +120,7 @@ static int PackBTX(struct Options *options)
                 res = tmp;
             }
             int repeatCount = chunk->textures.n - vecLen;
-            if (tex->palIdx != -1) {
+            if (tex->palIdx != -1 && VecGet(options->palettes, tex->palIdx).multiPalMode != SINGLE_PALETTE) {
                 VecGet(options->palettes, tex->palIdx).multiPalCount = repeatCount;
             }
         } else {

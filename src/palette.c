@@ -163,14 +163,14 @@ static int ReadLine(FILE *fp, char lineBuf[16])
     }
 }
 
-enum ErrorCode PalettesVec_Append(struct PalettesVec *vec, struct PaletteInput *in) // enum PaletteSource source, const char *path, const char *name, unsigned int multiPalCount, bool addSuffix)
+enum ErrorCode PalettesVec_Append(struct PalettesVec *vec, struct PaletteInput *in)
 {
     int multiPalCount = in->multiPalCount;
     bool addSuffix = in->addSuffix;
     const char *name = in->name;
     const char *path = in->path;
 
-    int maxNameLength = RES_NAME_LENGTH - (multiPalCount > 1 ? 1 + NumDigits(multiPalCount) : 0) - (addSuffix ? strlen("_pl") : 0);
+    int maxNameLength = RES_NAME_LENGTH - (in->multiPalMode != SINGLE_PALETTE ? 1 + NumDigits(multiPalCount) : 0) - (addSuffix ? strlen("_pl") : 0);
 
     if (strlen(name) > maxNameLength) {
         if (multiPalCount > 1) {
