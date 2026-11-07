@@ -18,9 +18,11 @@
 
 #include <stdio.h>
 
+#include "version.h"
+
 void PrintVersion(FILE *out)
 {
-    fprintf(out, "nitrobtx 0.0.2\n");
+    fprintf(out, "nitrobtx %s\n", NITROBTX_VERSION);
 }
 
 void PrintUsage(FILE *out, char *progPath)
