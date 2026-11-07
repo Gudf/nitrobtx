@@ -2,7 +2,7 @@ project(
     'nitrobtx',
     'c',
     meson_version: '>=1.1',
-    license: 'GPLv3',
+    license: 'LGPLv3',
     license_files: 'LICENSE'
 )
 
