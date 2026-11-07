@@ -20,6 +20,7 @@
 #include <string.h>
 
 #include "help.h"
+#include "palette.h"
 #include "texture.h"
 #include "vec.h"
 
@@ -179,7 +180,7 @@ static void ParsePackOptions(char *progName, char **argv, struct Options *option
         case OPTION_PALETTE:
             curr = CURRENT_INPUT_PALETTE;
             VecAppend(options->palettes, (struct PaletteInput) { .path = opts.optarg });
-            VecLast(options->palettes).inputType = INPUT_TYPE_JASC_PAL;
+            VecLast(options->palettes).inputType = INPUT_TYPE_AUTO;
             break;
         case OPTION_NAME:
             switch (curr) {
