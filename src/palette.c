@@ -420,7 +420,8 @@ enum ErrorCode Palette_ReadPNG(const char *inputPath, struct Palette *out)
     return ERR_CODE_OK;
 }
 
-static enum ErrorCode DetermineInputType(struct PaletteInput *in) {
+static enum ErrorCode DetermineInputType(struct PaletteInput *in)
+{
     FILE *fp = fopen(in->path, "rb");
     uint8_t header[9] = { 0 };
 
