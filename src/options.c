@@ -57,6 +57,7 @@ enum OptionCharacters {
     OPTION_COMBINED_PALETTE = 'c',
     OPTION_PALETTE_SUFFIX = 'S',
     OPTION_PALETTES_DIR = 'd',
+    OPTION_PALETTE_IDX = 'i',
     OPTION_INVALID = '?',
 };
 
@@ -88,6 +89,7 @@ static const struct optparse_long longopts_subcommands[] = {
     { "combined-palette", OPTION_COMBINED_PALETTE, OPTPARSE_NONE },
     { "palette-suffix", OPTION_PALETTE_SUFFIX, OPTPARSE_NONE },
     { "palettes-dir", OPTION_PALETTES_DIR, OPTPARSE_REQUIRED },
+    { "palette-index", OPTION_PALETTE_IDX, OPTPARSE_REQUIRED },
     { "help", OPTION_HELP, OPTPARSE_NONE },
     { "version", OPTION_VERSION, OPTPARSE_NONE },
     { 0 }
@@ -328,6 +330,9 @@ static void ParsePackOptions(char *progName, char **argv, struct Options *option
         case OPTION_PALETTES_DIR:
             fprintf(stderr, "Option '%s' not allowed in 'dump' mode!\n", argv[opts.optind - 1]);
             exit(1);
+        case OPTION_PALETTE_IDX:
+            fprintf(stderr, "Option '%s' not allowed in 'dump' mode!\n", argv[opts.optind - 1]);
+            exit(1);
         case OPTION_INVALID:
             fprintf(stderr, "Invalid option '%s': %s!\n", argv[opts.optind - 1], opts.errmsg);
             PrintUsage(stderr, progName);
@@ -361,6 +366,12 @@ static void ParseDumpOptions(char *progName, char **argv, struct Options *option
                 fprintf(stderr, "Options %s can only be used with a spritesheet NSBTX!\n", argv[opts.optind - 2]);
             }
             VecGet(options->nsbtxs, 0).palettesPath = opts.optarg;
+            break;
+        case OPTION_PALETTE_IDX:
+            if (!VecGet(options->nsbtxs, 0).spritesheet) {
+                fprintf(stderr, "Options %s can only be used with a spritesheet NSBTX!\n", argv[opts.optind - 2]);
+            }
+            options->paletteIndex = atoi(opts.optarg);
             break;
         case OPTION_COMBINED_PALETTE:
             if (!VecGet(options->nsbtxs, 0).spritesheet) {
@@ -409,6 +420,7 @@ static void InitOptions(struct Options *options)
     VecInit(options->textures, 8);
     VecInit(options->palettes, 8);
     VecInit(options->nsbtxs, 4);
+    options->paletteIndex = 0;
 }
 
 static enum TextureFormat ParseFormat(char *format)

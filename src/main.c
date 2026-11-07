@@ -89,7 +89,7 @@ static int DumpBTX(struct Options *options)
     }
 
     if (VecGet(options->nsbtxs, 0).spritesheet) {
-        res = TexChunkToPNGSpritesheet(container.chunks[0].texChunk, options->outputPath, VecGet(options->nsbtxs, 0).combinedPalette);
+        res = TexChunkToPNGSpritesheet(container.chunks[0].texChunk, options->outputPath, VecGet(options->nsbtxs, 0).combinedPalette, options->paletteIndex);
         if (res == ERR_CODE_OK && VecGet(options->nsbtxs, 0).palettesPath) {
             res = TexChunkPalettesToDirectory(container.chunks[0].texChunk, VecGet(options->nsbtxs, 0).palettesPath);
         }

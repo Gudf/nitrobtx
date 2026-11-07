@@ -365,10 +365,10 @@ void SortPalettesSmart(struct NSChunkTex *chunk)
     VecSort(chunk->palettes, ComparePalNamesSmart);
 }
 
-int TexChunkToPNGSpritesheet(const struct NSChunkTex *chunk, const char *path, bool combinedPalette)
+int TexChunkToPNGSpritesheet(const struct NSChunkTex *chunk, const char *path, bool combinedPalette, int paletteIndex)
 {
     if (!combinedPalette) {
-        return TexturesVec_ToSpritesheetPNG(&chunk->textures, chunk->palettes.n > 0 ? &VecGet(chunk->palettes, 0) : NULL, path, combinedPalette);
+        return TexturesVec_ToSpritesheetPNG(&chunk->textures, chunk->palettes.n > paletteIndex ? &VecGet(chunk->palettes, paletteIndex) : NULL, path, combinedPalette);
     } else if (chunk->palettes.n == chunk->textures.n) {
         struct Palette pal;
         PalettesVec_Combine(&chunk->palettes, &pal);
