@@ -40,6 +40,7 @@ struct Options {
     MakeVecType(PaletteInputVec, struct PaletteInput) palettes;
     MakeVecType(NSBTXInputVec, struct NSBTXInput) nsbtxs;
     char *outputPath;
+    int paletteIndex;
 };
 
 void ParseOptions(int argc, char **argv, struct Options *options);
