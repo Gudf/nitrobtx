@@ -58,6 +58,7 @@ enum OptionCharacters {
     OPTION_PALETTE_SUFFIX = 'S',
     OPTION_PALETTES_DIR = 'd',
     OPTION_PALETTE_IDX = 'i',
+    OPTION_KEEP_DUPLICATES = 'k',
     OPTION_INVALID = '?',
 };
 
@@ -90,6 +91,7 @@ static const struct optparse_long longopts_subcommands[] = {
     { "palette-suffix", OPTION_PALETTE_SUFFIX, OPTPARSE_NONE },
     { "palettes-dir", OPTION_PALETTES_DIR, OPTPARSE_REQUIRED },
     { "palette-index", OPTION_PALETTE_IDX, OPTPARSE_REQUIRED },
+    { "keep-duplicates", OPTION_KEEP_DUPLICATES, OPTPARSE_NONE },
     { "help", OPTION_HELP, OPTPARSE_NONE },
     { "version", OPTION_VERSION, OPTPARSE_NONE },
     { 0 }
@@ -321,6 +323,9 @@ static void ParsePackOptions(char *progName, char **argv, struct Options *option
             }
             VecLast(options->palettes).addSuffix = true;
             break;
+        case OPTION_KEEP_DUPLICATES:
+            options->keepDuplicates = true;
+            break;
         case OPTION_HELP:
             PrintUsage(stdout, progName);
             exit(0);
@@ -328,7 +333,7 @@ static void ParsePackOptions(char *progName, char **argv, struct Options *option
             PrintVersion(stdout);
             exit(0);
         case OPTION_PALETTES_DIR:
-            fprintf(stderr, "Option '%s' not allowed in 'dump' mode!\n", argv[opts.optind - 1]);
+            fprintf(stderr, "Option '%s' not allowed in 'pack' mode!\n", argv[opts.optind - 1]);
             exit(1);
         case OPTION_PALETTE_IDX:
             fprintf(stderr, "Option '%s' not allowed in 'dump' mode!\n", argv[opts.optind - 1]);
@@ -390,7 +395,7 @@ static void ParseDumpOptions(char *progName, char **argv, struct Options *option
             PrintUsage(stderr, progName);
             exit(1);
         default:
-            fprintf(stderr, "Option '%s' not allowed in 'pack' mode!\n", argv[opts.optind - 1]);
+            fprintf(stderr, "Option '%s' not allowed in 'dump' mode!\n", argv[opts.optind - 1]);
             exit(1);
         }
     }
@@ -416,6 +421,7 @@ static void ParseDumpOptions(char *progName, char **argv, struct Options *option
 static void InitOptions(struct Options *options)
 {
     options->mode = 0;
+    options->keepDuplicates = false;
     options->outputPath = NULL;
     VecInit(options->textures, 8);
     VecInit(options->palettes, 8);

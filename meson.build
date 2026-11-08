@@ -3,27 +3,22 @@ project(
     'c',
     meson_version: '>=1.1',
     license: 'LGPLv3',
-    license_files: 'LICENSE'
+    license_files: 'LICENSE',
+    version: '0.0.2',
+    default_options: [
+        'buildtype=release',
+        'warning_level=1',
+        'werror=true',
+        'c_std=gnu17',
+    ],
 )
 
-nitrobtx_cflags = [
-    '-std=gnu17',
-    '-O3',
-    '-Wall',
-    '-Wno-sign-conversion',
-    '-Werror',
-    '-D_FORTIFY_SOURCE=1',
-]
+add_project_arguments('-Wno-sign-conversion', language: 'c')
+add_project_arguments('-D_FORTIFY_SOURCE=1', language: 'c')
 
-nitrobtx_link_args = []
+subdir('include')
 
 native = get_option('native')
-asan = get_option('enable_asan')
-
-if asan
-    nitrobtx_cflags += '-fsanitize=address'
-    nitrobtx_link_args += '-fsanitize=address'
-endif
 
 libpng_dep = dependency('libpng', native: native)
 
@@ -44,8 +39,6 @@ nitrobtx_exe = executable(
         'src/palette.c',
         'src/texture.c',
     ),
-    c_args: nitrobtx_cflags,
-    link_args: nitrobtx_link_args,
     include_directories: nitrobtx_incdir,
     dependencies: libpng_dep,
     native: native,
