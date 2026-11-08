@@ -151,7 +151,7 @@ static int PackBTX(struct Options *options)
 
     FILE *out = fopen(options->outputPath, "wb");
 
-    NSContainer_WriteToFile(&container, out);
+    NSContainer_WriteToFile(&container, out, options->keepDuplicates);
 
     fclose(out);
     NSContainer_Free(&container);

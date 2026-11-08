@@ -35,6 +35,7 @@ struct NSBTXInput {
 
 struct Options {
     enum Mode mode;
+    bool keepDuplicates;
     MakeVecType(TextureInputVec, struct TextureInput) textures;
     MakeVecType(PaletteInputVec, struct PaletteInput) palettes;
     MakeVecType(NSBTXInputVec, struct NSBTXInput) nsbtxs;
