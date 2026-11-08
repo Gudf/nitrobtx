@@ -21,6 +21,7 @@ Pack options:
 
  --texture <path>, -t <path>  Path to a PNG to make into an NSBTX texture.
  --palette <path>, -p <path>  Path to a JASC-PAL file to make into an NSBTX palette.
+ --keep-duplicates, -k        Skip deduplicating the data.
 
   Texture options:
 

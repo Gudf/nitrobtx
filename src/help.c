@@ -42,6 +42,7 @@ void PrintUsage(FILE *out, char *progPath)
     fprintf(out, "\n");
     fprintf(out, " --texture <path>, -t <path>  Path to a PNG to make into an NSBTX texture.\n");
     fprintf(out, " --palette <path>, -p <path>  Path to a JASC-PAL file to make into an NSBTX palette.\n");
+    fprintf(out, " --keep-duplicates, -k        Skip deduplicating the data.\n");
     fprintf(out, "\n");
     fprintf(out, "  Texture options:\n");
     fprintf(out, "\n");
